@@ -1,12 +1,12 @@
 #include <unistd.h>
 #include <stdlib.h>
+#include <string.h>
+#include <stdio.h>
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
 #include <netdb.h>
-
-#define PORT "58001"
 
 int fd, errcode;
 ssize_t n;
@@ -22,7 +22,30 @@ struct addrinfo hints, *res;
 struct sockaddr_in addr;
 char buffer[128]; // buffer para onde serão escritos os dados recebidos do servidor
 
-int main() {
+int main(int argc, char *argv[]) {
+
+    char *GSIP = "localhost";
+    char* GSport = "58080";
+
+    int opt;
+    char *endptr;
+
+    while ((opt = getopt(argc, argv, "n:p:")) != -1) {
+        switch (opt) {
+            case 'n':
+                GSIP = optarg;
+                break;
+            case 'p':
+                GSport = optarg;
+                break;
+            default:
+                fprintf(stderr, "Usage: %s [-n GSIP] [-p GSport]\n", argv[0]);
+                return EXIT_FAILURE;
+        }
+    }
+
+    printf("GSIP: %s\n", GSIP);
+    printf("GSport: %s\n", GSport);
 
     /* Cria um socket UDP (SOCK_DGRAM) para IPv4 (AF_INET).
     É devolvido um descritor de ficheiro (fd) para onde se deve comunicar. */
@@ -39,7 +62,7 @@ int main() {
     /* Busca informação do host "localhost", na porta especificada,
     guardando a informação nas `hints` e na `res`. Caso o host seja um nome
     e não um endereço IP (como é o caso), efetua um DNS Lookup. */
-    errcode = getaddrinfo("localhost", PORT, &hints, &res);
+    errcode = getaddrinfo(GSIP, GSport, &hints, &res);
     if (errcode != 0) {
         exit(1);
     }
@@ -47,7 +70,43 @@ int main() {
     /* Envia para o `fd` (socket) a mensagem "Hello!\n" com o tamanho 7.
        Não são passadas flags (0), e é passado o endereço de destino.
        É apenas aqui criada a ligação ao servidor. */
-    n = sendto(fd, "Hello!\n", 7, 0, res->ai_addr, res->ai_addrlen);
+    n = sendto(fd, "SNG 099417 30\n", 14, 0, res->ai_addr, res->ai_addrlen);
+    if (n == -1) {
+        exit(1);
+    }
+
+        /* Recebe 128 Bytes do servidor e guarda-os no buffer.
+       As variáveis `addr` e `addrlen` não são usadas pois não foram inicializadas. */
+    addrlen = sizeof(addr);
+    n = recvfrom(fd, buffer, 128, 0, (struct sockaddr *)&addr, &addrlen);
+    if (n == -1) {
+        exit(1);
+    }
+
+    /* Imprime a mensagem "echo" e o conteúdo do buffer (ou seja, o que foi recebido
+    do servidor) para o STDOUT (fd = 1) */
+    write(1, "echo: ", 6);
+    write(1, buffer, n);
+
+    n = sendto(fd, "TRY 099417 R R R R 1\n", 21, 0, res->ai_addr, res->ai_addrlen);
+    if (n == -1) {
+        exit(1);
+    }
+
+    /* Recebe 128 Bytes do servidor e guarda-os no buffer.
+       As variáveis `addr` e `addrlen` não são usadas pois não foram inicializadas. */
+    addrlen = sizeof(addr);
+    n = recvfrom(fd, buffer, 128, 0, (struct sockaddr *)&addr, &addrlen);
+    if (n == -1) {
+        exit(1);
+    }
+
+    /* Imprime a mensagem "echo" e o conteúdo do buffer (ou seja, o que foi recebido
+    do servidor) para o STDOUT (fd = 1) */
+    write(1, "echo: ", 6);
+    write(1, buffer, n);
+
+    n = sendto(fd, "QUT 099417\n", 11, 0, res->ai_addr, res->ai_addrlen);
     if (n == -1) {
         exit(1);
     }

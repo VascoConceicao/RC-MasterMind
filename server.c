@@ -1,12 +1,14 @@
 #include <unistd.h>
 #include <stdlib.h>
+#include <string.h>
+#include <stdio.h>
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
 #include <netdb.h>
 
-#define PORT "58001"
+#define PORT "58080"
 
 int fd, errcode;
 ssize_t n;
