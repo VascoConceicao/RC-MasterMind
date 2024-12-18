@@ -1,0 +1,38 @@
+debug 111111 100 R G B Y
+try G Y P P
+try G Y O O
+try R G B O
+try G Y P P
+show_trials
+sleep 20
+try R G B Y
+show_trials
+debug 222222 100 R G B Y
+try G Y P P
+try G Y O O
+try R G B O
+try G Y P P
+show_trials
+sleep 20
+quit
+show_trials
+debug 333333 100 R G B Y
+try G Y P P
+try R Y O O
+try R O P Y
+try R Y G P
+try B G R Y
+try B R Y G
+try G G G G
+show_trials
+sleep 30
+try G Y P P
+try B Y R G
+show_trials
+debug 444444 20 R G B Y
+try R O O O
+try O R O O
+show_trials
+sleep 30
+show_trials
+exit

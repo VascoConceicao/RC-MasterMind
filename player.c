@@ -69,28 +69,39 @@ int main(int argc, char *argv[]) {
 
     int ok = 1;
     while (ok) {
+        buffer[0] = '\0';
         if (fgets(buffer, sizeof(buffer), stdin) == NULL) {
             printf("Error reading input.\n");
             exit(1);
         }
 
-        char command[4];
-        sscanf(buffer, "%3s", command);
-
-        int mode = -1;
-        if (!strcmp(command, "SNG"))
-            mode = 0;
-        else if (!strcmp(command, "TRY"))
-            mode = 0;
-        else if (!strcmp(command, "QUT"))
-            mode = 0;
-        else if (!strcmp(command, "DBG"))
-            mode = 0;
-        else if (!strcmp(command, "STR"))
+        char command[max_size], args[max_size];
+        sscanf(buffer, "%s %[^\n]", command, args);
+        int mode = 0;
+        if (!strcmp(command, "start")) {
+            strcpy(command, "SNG");
+        } else if (!strcmp(command, "try")) {
+            strcpy(command, "TRY");
+        } else if (!strcmp(command, "show_trials") || !strcmp(command, "st")) {
             mode = 1;
-        else if (!strcmp(command, "SSB"))
+            strcpy(command, "STR");
+        } else if (!strcmp(command, "scoreboard") || !strcmp(command, "sb")) {
             mode = 1;
-
+            strcpy(command, "SSB");
+        } else if (!strcmp(command, "quit")) {
+            strcpy(command, "QUT");
+        } else if (!strcmp(command, "exit")) {
+            strcpy(command, "QUT");
+            ok = 0;
+        } else if (!strcmp(command, "debug")) {
+            strcpy(command, "DBG");
+        } else {
+            strcpy(command, "ERR");
+        }
+        sprintf(buffer, "%s %s\n", command, args);
+        command[0] = '\0';
+        args[0] = '\0';
+        
         switch (mode) {
             // Modo UDP
             case 0:
@@ -170,14 +181,27 @@ int main(int argc, char *argv[]) {
                 write(1, "response: ", 10);
                 write(1, response, strlen(response));
 
+                strtok(response, " ");
+                char *status = strtok(NULL, " ");
+                if (!strcmp(status, "ACT") || !strcmp(status, "FIN") || !strcmp(status, "OK")) {
+                    mode = 1;
+
+                    char *Fname = strtok(NULL, " ");
+                    char *Fsize = strtok(NULL, " ");
+                    char *Fdata = strtok(NULL, "");
+
+                    FILE *fd;
+                    fd = fopen(Fname, "w");
+                    if (fd == NULL)
+                        return 1;
+                    fprintf(fd, "%s", Fdata);
+                    fclose(fd);
+                }
+
                 free(response);
 
                 freeaddrinfo(res_tcp);
                 close(fd_tcp);
-                break;
-
-            default:
-                ok = 0;
                 break;
         }
     }

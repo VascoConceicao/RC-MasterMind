@@ -1,0 +1,28 @@
+debug 222222 100 R G P O
+try G R O P
+try P G R O
+try G R O P
+try R G P O
+debug 333333 100 R G R G
+try G Y Y O
+try Y G Y G
+try P P P P
+try O O O O
+try R R R R
+try Y G Y G
+try G Y Y O
+try G G R R
+try R R G G
+try R G R G
+debug 444444 100 R G R G
+try G Y Y O
+try Y G Y G
+try P P P P
+try O O O O
+try R R R R
+try Y G Y G
+try G Y Y O
+try G G R R
+try R R G G
+try G R G R
+exit

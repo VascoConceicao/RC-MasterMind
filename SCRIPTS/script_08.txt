@@ -1,0 +1,19 @@
+debug 111111 100 Y Y Y Y
+try Y B B B
+try Y Y B B
+try Y Y Y B
+try B Y Y Y
+try B B Y Y
+try B B B Y
+try Y B Y B
+try Y Y Y Y
+debug 111111 100 B B B Y
+try Y O O O
+try O Y O O
+try O O Y O
+try O O O Y
+try B Y O O
+try O B Y O
+try O O B Y
+try B B B Y
+exit

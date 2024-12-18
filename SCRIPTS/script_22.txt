@@ -1,0 +1,31 @@
+debug 100004 100 G P O R
+try R G B Y
+try B Y P O
+try P O R G
+show_trials
+try G P O R
+show_trials
+sleep 2
+scoreboard
+debug 100005 100 R R G G
+try R G B Y
+try B Y P O
+try P O R G
+try G P O R
+show_trials
+try R R G G
+show_trials
+sleep 2
+scoreboard
+debug 100006 100 G G R R
+try R G B Y
+try B Y P O
+try P O R G
+try G P O R
+try R R G G
+show_trials
+try G G R R
+show_trials
+sleep 2
+scoreboard
+exit

@@ -1,0 +1,7 @@
+debug 100001 20 R G B Y
+try R O O O
+sleep 10
+try G B P P
+sleep 20
+try R G B Y
+exit

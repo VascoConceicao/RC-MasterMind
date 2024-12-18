@@ -1,0 +1,29 @@
+sleep 2
+scoreboard
+debug 100010 100 O Y O Y
+try R G B Y
+try B Y P O
+try P O R G
+try G P O R
+try R R G G
+try G G R R
+try O O Y Y
+show_trials
+try O Y O Y
+show_trials
+sleep 2
+scoreboard
+debug 100011 100 O Y O Y
+try R G B Y
+try B Y P O
+try P O R G
+try G P O R
+try R R G G
+try G G R R
+try O O Y Y
+show_trials
+try O Y O Y
+show_trials
+sleep 2
+scoreboard
+exit

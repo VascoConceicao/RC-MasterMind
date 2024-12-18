@@ -1,0 +1,9 @@
+start 106481 600
+quit
+start 106483 600
+quit
+start 099417 600
+quit
+start 099419 600
+quit
+exit

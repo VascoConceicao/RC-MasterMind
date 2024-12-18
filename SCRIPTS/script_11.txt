@@ -1,0 +1,165 @@
+debug 100001 100 R G B Y
+try R G B Y
+scoreboard
+debug 100002 100 B Y P O
+try R G B Y
+try B Y P O
+scoreboard
+debug 100003 100 P O R G
+try R G B Y
+try B Y P O
+try P O R G
+scoreboard
+debug 100004 100 G P O R
+try R G B Y
+try B Y P O
+try P O R G
+try G P O R
+scoreboard
+debug 100005 100 R R G G
+try R G B Y
+try B Y P O
+try P O R G
+try G P O R
+try R R G G
+scoreboard
+debug 100006 100 G G R R
+try R G B Y
+try B Y P O
+try P O R G
+try G P O R
+try R R G G
+try G G R R
+scoreboard
+debug 100007 100 O O Y Y
+try R G B Y
+try B Y P O
+try P O R G
+try G P O R
+try R R G G
+try G G R R
+try O O Y Y
+scoreboard
+debug 100008 100 O Y O Y
+try R G B Y
+try B Y P O
+try P O R G
+try G P O R
+try R R G G
+try G G R R
+try O O Y Y
+try O Y O Y
+scoreboard
+debug 100009 100 O Y O Y
+try R G B Y
+try B Y P O
+try P O R G
+try G P O R
+try R R G G
+try G G R R
+try O O Y Y
+try O Y O Y
+scoreboard
+debug 100010 100 O Y O Y
+try R G B Y
+try B Y P O
+try P O R G
+try G P O R
+try R R G G
+try G G R R
+try O O Y Y
+try O Y O Y
+scoreboard
+debug 100011 100 O Y O Y
+try R G B Y
+try B Y P O
+try P O R G
+try G P O R
+try R R G G
+try G G R R
+try O O Y Y
+try O Y O Y
+scoreboard
+debug 200001 100 R G B Y
+try R G B Y
+scoreboard
+debug 200002 100 B Y P O
+try R G B Y
+try B Y P O
+scoreboard
+debug 200003 100 P O R G
+try R G B Y
+try B Y P O
+try P O R G
+scoreboard
+debug 200004 100 G P O R
+try R G B Y
+try B Y P O
+try P O R G
+try G P O R
+scoreboard
+debug 200005 100 R R G G
+try R G B Y
+try B Y P O
+try P O R G
+try G P O R
+try R R G G
+scoreboard
+debug 200006 100 G G R R
+try R G B Y
+try B Y P O
+try P O R G
+try G P O R
+try R R G G
+try G G R R
+scoreboard
+debug 200007 100 O O Y Y
+try R G B Y
+try B Y P O
+try P O R G
+try G P O R
+try R R G G
+try G G R R
+try O O Y Y
+scoreboard
+debug 200008 100 O Y O Y
+try R G B Y
+try B Y P O
+try P O R G
+try G P O R
+try R R G G
+try G G R R
+try O O Y Y
+try O Y O Y
+scoreboard
+debug 200009 100 O Y O Y
+try R G B Y
+try B Y P O
+try P O R G
+try G P O R
+try R R G G
+try G G R R
+try O O Y Y
+try O Y O Y
+scoreboard
+debug 200010 100 O Y O Y
+try R G B Y
+try B Y P O
+try P O R G
+try G P O R
+try R R G G
+try G G R R
+try O O Y Y
+try O Y O Y
+scoreboard
+debug 200011 100 O Y O Y
+try R G B Y
+try B Y P O
+try P O R G
+try G P O R
+try R R G G
+try G G R R
+try O O Y Y
+try O Y O Y
+scoreboard
+exit

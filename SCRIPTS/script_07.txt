@@ -1,0 +1,15 @@
+debug 123456 100 R G R G
+try G R G R
+try G G R R
+try R R G G
+try R G R G
+debug 123456 100 R G B Y
+try R R G G
+try G G R R
+try B B Y Y
+try Y Y B B
+try R G R R
+try G G B B
+try Y Y B Y
+try R G B Y
+exit

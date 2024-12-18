@@ -1,0 +1,21 @@
+debug 100001 100 R G B Y
+try R G B Y
+show_trials
+sleep 2
+scoreboard
+debug 100002 100 B Y P O
+try R G B Y
+show_trials
+try B Y P O
+show_trials
+sleep 2
+scoreboard
+debug 100003 100 P O R G
+try R G B Y
+try B Y P O
+show_trials
+try P O R G
+show_trials
+sleep 2
+scoreboard
+exit
