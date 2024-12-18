@@ -1,0 +1,8 @@
+
+     Active game found for player 106481
+Game initiated: 2024-12-18 18:32:07 with 300 seconds to be completed
+
+     Game started - no transactions found
+
+  -- 297 seconds remaining to be completed -- 
+

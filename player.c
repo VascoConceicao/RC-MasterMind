@@ -21,18 +21,19 @@ res - Localização onde a função getaddrinfo() armazenará informações sobr
 struct addrinfo hints_udp, hints_tcp, *res_udp, *res_tcp;
 struct sockaddr_in addr;
 
-int main(int argc, char *argv[]) {
+int n_spaces(char *args) {
+    int n = 0;
+    for (int i = 1; args[i] != '\0'; i++) {
+        if (args[i] == ' ' && args[i - 1] != ' ')
+            n += 1;
+    }
+    return args[strlen(args) - 1] == ' ' ? n - 1 : n;
+}
 
-    int max_size = 512;
-    char buffer[max_size]; // buffer para onde serão escritos os dados recebidos do servidor
+int main(int argc, char *argv[]) {
 
     char *GSIP = "localhost";
     char* GSport = "58080";
-
-    int nT = 1;
-    char PLID[max_size];
-    PLID[0] = '\0';
-    strcpy(PLID, "099417");
 
     int opt;
     char *endptr;
@@ -72,23 +73,26 @@ int main(int argc, char *argv[]) {
     if (errcode != 0)
         exit(1);
 
+    int max_size = 512, nT = 1;
+    char buffer[max_size], PLID[max_size], command[max_size], temp_PLID[max_size], args[max_size], next[max_size];
+    PLID[0] = '\0';
+
     int ok = 1;
     while (ok) {
-        char command[max_size], temp_PLID[max_size], args[max_size], next[max_size];
-        buffer[0] = '\0';
-        command[0] = '\0';
-        args[0] = '\0';
-        next[0] = '\0';
+        memset(buffer, 0, sizeof(buffer));
+        memset(command, 0, sizeof(command));
+        memset(args, 0, sizeof(args));
+        memset(next, 0, sizeof(next));
         if (fgets(buffer, sizeof(buffer), stdin) == NULL)
             exit(1);
 
         sscanf(buffer, "%s %[^\n]", command, args);
         int mode = 0;
-        if (!strcmp(command, "start")) {
+        if (!strcmp(command, "start") && n_spaces(args) == 1) {
             char max_playtime[max_size];
             sscanf(args, "%s %s %[^\n]", temp_PLID, max_playtime, next);
             sprintf(buffer, "%s %s %s\n", "SNG", temp_PLID, max_playtime);
-        } else if (!strcmp(command, "try")) {
+        } else if (!strcmp(command, "try") && n_spaces(args) == 3) {
             char C1[max_size], C2[max_size], C3[max_size], C4[max_size];
             sscanf(args, "%s %s %s %s %[^\n]", C1, C2, C3, C4, next);
             sprintf(buffer, "%s %s %s %s %s %s %d\n", "TRY", PLID, C1, C2, C3, C4, nT);
@@ -107,7 +111,7 @@ int main(int argc, char *argv[]) {
             ok = 0;
             sprintf(next, "%s", args);
             sprintf(buffer, "%s %s\n", "QUT", PLID);
-        } else if (!strcmp(command, "debug")) {
+        } else if (!strcmp(command, "debug") && n_spaces(args) == 5) {
             char max_playtime[max_size], C1[max_size], C2[max_size], C3[max_size], C4[max_size];
             sscanf(args, "%s %s %s %s %s %s %[^\n]", temp_PLID, max_playtime, C1, C2, C3, C4, next);
             sprintf(buffer, "%s %s %s %s %s %s %s\n", "DBG", temp_PLID, max_playtime, C1, C2, C3, C4);
