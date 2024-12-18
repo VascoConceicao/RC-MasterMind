@@ -67,7 +67,7 @@ int main(int argc, char *argv[]) {
     if (errcode != 0)
         exit(1);
 
-    int ok = 1;
+    int ok = 1, ok_flag = 0;
     while (ok) {
         buffer[0] = '\0';
         if (fgets(buffer, sizeof(buffer), stdin) == NULL) {
@@ -92,7 +92,7 @@ int main(int argc, char *argv[]) {
             strcpy(command, "QUT");
         } else if (!strcmp(command, "exit")) {
             strcpy(command, "QUT");
-            ok = 0;
+            ok_flag = 1;
         } else if (!strcmp(command, "debug")) {
             strcpy(command, "DBG");
         } else {
@@ -101,7 +101,7 @@ int main(int argc, char *argv[]) {
         sprintf(buffer, "%s %s\n", command, args);
         command[0] = '\0';
         args[0] = '\0';
-        
+        // 1 erro: "st 106481 qualquer coisa" ou "show trials 106481 qq coisa" da erro no read (-1, entra na linha 181) e acaba o programa (erro do server?)
         switch (mode) {
             // Modo UDP
             case 0:
@@ -123,6 +123,11 @@ int main(int argc, char *argv[]) {
                 do servidor) para o STDOUT (fd_udp = 1) */
                 write(1, "response: ", 10);
                 write(1, buffer, n_udp);
+                
+                if (ok_flag && !strncmp(buffer, "RQT OK", 6))
+                    ok = 0;
+                else if (ok_flag)
+                    ok_flag = 0;
                 break;
 
             // Modo TCP
@@ -181,22 +186,29 @@ int main(int argc, char *argv[]) {
                 write(1, "response: ", 10);
                 write(1, response, strlen(response));
 
-                strtok(response, " ");
-                char *status = strtok(NULL, " ");
+                char status[10] = {0};
+                char Fname[256] = {0};
+                char Fsize[256] = {0};
+                const char *remaining = response;
+                sscanf(remaining, "%*s %9s %255s %255s", status, Fname, Fsize);
+                remaining = strstr(remaining, Fsize);
+                if (remaining == NULL) exit(1);
+                remaining += strlen(Fsize);
+                while (*remaining == ' ') remaining++;
+                const char *Fdata = remaining;
+                // printf("status: %s\nFname: %s\nFsize: %s\nFdata: %s\n", status, Fname, Fsize, Fdata);
+                
                 if (!strcmp(status, "ACT") || !strcmp(status, "FIN") || !strcmp(status, "OK")) {
-                    mode = 1;
-
-                    char *Fname = strtok(NULL, " ");
-                    char *Fsize = strtok(NULL, " ");
-                    char *Fdata = strtok(NULL, "");
-
-                    FILE *fd;
-                    fd = fopen(Fname, "w");
-                    if (fd == NULL)
-                        return 1;
+                    FILE *fd = fopen(Fname, "w");
+                    if (fd == NULL) {
+                        return 1; // Error opening the file
+                    }
+            
+                    // Write the remaining data to the file
                     fprintf(fd, "%s", Fdata);
                     fclose(fd);
                 }
+            
 
                 free(response);
 
