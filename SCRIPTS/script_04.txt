@@ -1,6 +1,6 @@
 start 100001 100
 quit
-debug 100002 600 R G B Y
+debug 106481 600 R G B Y
 quit
 debug 100003 600 Y B G R
 quit

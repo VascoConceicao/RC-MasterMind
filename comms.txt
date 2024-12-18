@@ -1,7 +1,7 @@
 start 106481 300
-try 106481 R R R R 1
-try 106481 R R Y R 2
-quit 106481
-show_trials 106481
-st 099417
-start 106481 300
+try R R R R
+try R R Y R
+quit
+show_trials
+st
+debug 106481 600 R G B Y

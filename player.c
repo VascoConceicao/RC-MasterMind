@@ -29,6 +29,11 @@ int main(int argc, char *argv[]) {
     char *GSIP = "localhost";
     char* GSport = "58080";
 
+    int nT = 1;
+    char PLID[max_size];
+    PLID[0] = '\0';
+    strcpy(PLID, "099417");
+
     int opt;
     char *endptr;
 
@@ -67,41 +72,51 @@ int main(int argc, char *argv[]) {
     if (errcode != 0)
         exit(1);
 
-    int ok = 1, ok_flag = 0;
+    int ok = 1;
     while (ok) {
+        char command[max_size], temp_PLID[max_size], args[max_size], next[max_size];
         buffer[0] = '\0';
-        if (fgets(buffer, sizeof(buffer), stdin) == NULL) {
-            printf("Error reading input.\n");
+        command[0] = '\0';
+        args[0] = '\0';
+        next[0] = '\0';
+        if (fgets(buffer, sizeof(buffer), stdin) == NULL)
             exit(1);
-        }
 
-        char command[max_size], args[max_size];
         sscanf(buffer, "%s %[^\n]", command, args);
         int mode = 0;
         if (!strcmp(command, "start")) {
-            strcpy(command, "SNG");
+            char max_playtime[max_size];
+            sscanf(args, "%s %s %[^\n]", temp_PLID, max_playtime, next);
+            sprintf(buffer, "%s %s %s\n", "SNG", temp_PLID, max_playtime);
         } else if (!strcmp(command, "try")) {
-            strcpy(command, "TRY");
+            char C1[max_size], C2[max_size], C3[max_size], C4[max_size];
+            sscanf(args, "%s %s %s %s %[^\n]", C1, C2, C3, C4, next);
+            sprintf(buffer, "%s %s %s %s %s %s %d\n", "TRY", PLID, C1, C2, C3, C4, nT);
         } else if (!strcmp(command, "show_trials") || !strcmp(command, "st")) {
             mode = 1;
-            strcpy(command, "STR");
+            sprintf(next, "%s", args);
+            sprintf(buffer, "%s %s\n", "STR", PLID);
         } else if (!strcmp(command, "scoreboard") || !strcmp(command, "sb")) {
             mode = 1;
-            strcpy(command, "SSB");
+            sprintf(next, "%s", args);
+            sprintf(buffer, "%s\n", "SSB");
         } else if (!strcmp(command, "quit")) {
-            strcpy(command, "QUT");
+            sprintf(next, "%s", args);
+            sprintf(buffer, "%s %s\n", "QUT", PLID);
         } else if (!strcmp(command, "exit")) {
-            strcpy(command, "QUT");
-            ok_flag = 1;
+            ok = 0;
+            sprintf(next, "%s", args);
+            sprintf(buffer, "%s %s\n", "QUT", PLID);
         } else if (!strcmp(command, "debug")) {
-            strcpy(command, "DBG");
+            char max_playtime[max_size], C1[max_size], C2[max_size], C3[max_size], C4[max_size];
+            sscanf(args, "%s %s %s %s %s %s %[^\n]", temp_PLID, max_playtime, C1, C2, C3, C4, next);
+            sprintf(buffer, "%s %s %s %s %s %s %s\n", "DBG", temp_PLID, max_playtime, C1, C2, C3, C4);
         } else {
-            strcpy(command, "ERR");
+            sprintf(buffer, "%s\n", "ERR");
         }
-        sprintf(buffer, "%s %s\n", command, args);
-        command[0] = '\0';
-        args[0] = '\0';
-        // 1 erro: "st 106481 qualquer coisa" ou "show trials 106481 qq coisa" da erro no read (-1, entra na linha 181) e acaba o programa (erro do server?)
+        if (strcmp(next, ""))
+            sprintf(buffer, "%s\n", "ERR");
+        
         switch (mode) {
             // Modo UDP
             case 0:
@@ -123,16 +138,15 @@ int main(int argc, char *argv[]) {
                 do servidor) para o STDOUT (fd_udp = 1) */
                 write(1, "response: ", 10);
                 write(1, buffer, n_udp);
-                
-                if (ok_flag && !strncmp(buffer, "RQT OK", 6))
-                    ok = 0;
-                else if (ok_flag)
-                    ok_flag = 0;
+
+                if (!strncmp(buffer, "RSG OK", 6) || !strncmp(buffer, "RDB OK", 6))
+                    strcpy(PLID, temp_PLID);
+                else if (!strncmp(buffer, "RTR OK", 6))
+                    nT = (buffer[7] - '0') + 1;
                 break;
 
             // Modo TCP
             case 1:
-
                 /* Cria um socket TCP (SOCK_STREAM) para IPv4 (AF_INET).
                 É devolvido um descritor de ficheiro (fd) para onde se deve comunicar. */
                 fd_tcp = socket(AF_INET, SOCK_STREAM, 0);
@@ -186,19 +200,17 @@ int main(int argc, char *argv[]) {
                 write(1, "response: ", 10);
                 write(1, response, strlen(response));
 
-                char status[10] = {0};
-                char Fname[256] = {0};
-                char Fsize[256] = {0};
+                char status[max_size], Fname[max_size], Fsize[max_size];
                 const char *remaining = response;
                 sscanf(remaining, "%*s %9s %255s %255s", status, Fname, Fsize);
-                remaining = strstr(remaining, Fsize);
-                if (remaining == NULL) exit(1);
-                remaining += strlen(Fsize);
-                while (*remaining == ' ') remaining++;
-                const char *Fdata = remaining;
-                // printf("status: %s\nFname: %s\nFsize: %s\nFdata: %s\n", status, Fname, Fsize, Fdata);
                 
                 if (!strcmp(status, "ACT") || !strcmp(status, "FIN") || !strcmp(status, "OK")) {
+                    remaining = strstr(remaining, Fsize);
+                    if (remaining == NULL) exit(1);
+                    remaining += strlen(Fsize);
+                    while (*remaining == ' ') remaining++;
+                    const char *Fdata = remaining;
+                    // printf("status: %s\nFname: %s\nFsize: %s\nFdata: %s\n", status, Fname, Fsize, Fdata);
                     FILE *fd = fopen(Fname, "w");
                     if (fd == NULL) {
                         return 1; // Error opening the file
@@ -208,7 +220,6 @@ int main(int argc, char *argv[]) {
                     fprintf(fd, "%s", Fdata);
                     fclose(fd);
                 }
-            
 
                 free(response);
 
