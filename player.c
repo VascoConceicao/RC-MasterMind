@@ -216,17 +216,13 @@ int main(int argc, char *argv[]) {
                     const char *Fdata = remaining;
                     // printf("status: %s\nFname: %s\nFsize: %s\nFdata: %s\n", status, Fname, Fsize, Fdata);
                     FILE *fd = fopen(Fname, "w");
-                    if (fd == NULL) {
-                        return 1; // Error opening the file
-                    }
-            
-                    // Write the remaining data to the file
+                    if (fd == NULL)
+                        exit(1);
                     fprintf(fd, "%s", Fdata);
                     fclose(fd);
                 }
 
                 free(response);
-
                 freeaddrinfo(res_tcp);
                 close(fd_tcp);
                 break;

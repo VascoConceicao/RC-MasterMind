@@ -8,6 +8,7 @@
 #include <arpa/inet.h>
 #include <netdb.h>
 #include <time.h>
+#include <ctype.h>
 
 #define SNG 0
 #define TRY 1
@@ -22,51 +23,28 @@ socklen_t addrlen;
 struct addrinfo hints, *res;
 struct sockaddr_in addr;
 
-int getPLID(const char *str) {
-    // Check if the string length is exactly 6
-    if (strlen(str) != 6) {
+int get_PLID(const char *str) {
+    if (strlen(str) != 6)
         return -1;
-    }
 
-    // Check if all characters are digits
-    for (int i = 0; str[i] != '\0'; i++) {
-        if (!isdigit(str[i])) {
+    for (int i = 0; str[i] != '\0'; i++)
+        if (!isdigit(str[i]))
             return -1;
-        }
-    }
 
-    return atoi(str); // The string is a 6-digit number
+    return atoi(str);
 }
 
-int getTime(const char *str) {
-    // Check if the string is empty
-    if (str == NULL || strlen(str) == 0) {
+int get_time(const char *str) {
+    if (str == NULL || strlen(str) == 0)
         return -1;
-    }
 
-    // Check if all characters are digits
-    for (int i = 0; str[i] != '\0'; i++) {
-        if (!isdigit(str[i])) {
-            return -1; // Not a valid number
-        }
-    }
+    for (int i = 0; str[i] != '\0'; i++)
+        if (!isdigit(str[i]))
+            return -1;
 
-    // Convert the string to an integer
     int number = atoi(str);
-
-    // Check if the number is in the range 1 to 600
-    if (number >= 1 && number <= 600) {
-        return number; // Valid number in range
-    }
-
-    return -1; // Out of range
-}
-
-int get_game_index(int PLID) {
-    for (int i = 0; i < games_size; i++) {
-        if (games[i].PLID == PLID)
-            return i;
-    }
+    if (number >= 1 && number <= 600)
+        return number;
     return -1;
 }
 
@@ -79,11 +57,83 @@ int has_x_seconds_passed(time_t start_time, int x) {
 
 typedef struct {
     int PLID;
-    char key[4];
+    char key[5];
     int nT;
     time_t start_time;
     int max_playtime;
 } Game;
+
+typedef struct {
+    Game *games;
+    size_t size;
+    size_t capacity;
+} GameArray;
+
+void init_game(GameArray *array) {
+    array->games = NULL;
+    array->size = 0;
+    array->capacity = 0;
+}
+
+void append_game(GameArray *array, Game new_game) {
+    if (array->size == array->capacity) {
+        array->capacity = (array->capacity == 0) ? 1 : array->capacity * 2;
+        array->games = realloc(array->games, array->capacity * sizeof(Game));
+        if (array->games == NULL)
+            exit(EXIT_FAILURE);
+    }
+
+    array->games[array->size] = new_game;
+    array->size++;
+}
+
+void remove_game(GameArray *array, size_t index) {
+    if (index >= array->size)
+        return;
+
+    for (size_t i = index; i < array->size - 1; i++)
+        array->games[i] = array->games[i + 1];
+
+    array->size--;
+
+    if (array->size < array->capacity / 4 && array->capacity > 1) {
+        array->capacity /= 2;
+        array->games = realloc(array->games, array->capacity * sizeof(Game));
+        if (array->games == NULL)
+            perror("Failed to reallocate memory");
+    }
+}
+
+int get_game_index(int PLID, GameArray *games) {
+    for (int i = 0; i < games->size; i++)
+        if (games->games[i].PLID == PLID)
+            return i;
+    return -1;
+}
+
+void free_game_array(GameArray *array) {
+    free(array->games);
+    array->games = NULL;
+    array->size = 0;
+    array->capacity = 0;
+}
+
+void print_games(const GameArray *array) {
+    if (array->size == 0) {
+        printf("No games available.\n");
+        return;
+    }
+
+    printf("Games in the array:\n");
+    for (size_t i = 0; i < array->size; i++) {
+        printf("Game %zu:\n", i);
+        printf("  PLID         = %d\n", array->games[i].PLID);
+        printf("  Key          = %s\n", array->games[i].key);
+        printf("  nT           = %d\n", array->games[i].nT);
+        printf("  Start Time   = %s", ctime(&array->games[i].start_time));
+        printf("  Max Playtime = %d seconds\n\n", array->games[i].max_playtime);
+    }
+}
 
 int main(int argc, char *argv[]) {
 
@@ -135,7 +185,9 @@ int main(int argc, char *argv[]) {
     }
 
     int max_size = 512;
-    char buffer[max_size], status[3];
+    char buffer[max_size], status[4];
+    GameArray games;
+    init_game(&games);
 
     /* Loop para receber bytes e processá-los */
     while (1) {
@@ -153,7 +205,7 @@ int main(int argc, char *argv[]) {
         int client_port = ntohs(addr.sin_port);
 
         if (verbose) {
-            char message[max_size]; // Adjust size as needed
+            char message[max_size];
             sprintf(message, "-------------------------------\nIP: %s\nPort: %d\n\n%s\n", client_ip, client_port, buffer);
             write(1, message, strlen(message));
         }
@@ -171,21 +223,31 @@ int main(int argc, char *argv[]) {
             case SNG:
                 char PLID[max_size], max_playtime[max_size];
                 sscanf(args, "%s %s", PLID, max_playtime);
-                printf("PLID: %s\nmax_playtime: %s\n", PLID, max_playtime);
-                int iPLID = getPLID(PLID), iTime = getTime(max_playtime);
-                if (iPLID == -1 || iTime == -1) {
-                    status = "ERR";
-                } else if (get_game_index(PLID) == -1) {
-                    status = "NOK";
-                } else {
-                    Game new_game;
-                    new_game.PLID = PLID;
-                    new_game.max_playtime = max_playtime;
-                }
+                int iPLID = get_PLID(PLID), iTime = get_time(max_playtime);
 
+                if (iPLID == -1 || iTime == -1) {
+                    sprintf(status, "%s", "ERR");
+                } else if (get_game_index(iPLID, &games) != -1) {
+                    sprintf(status, "%s", "NOK");
+                } else {
+                    char key[5] = "0000";
+                    // Red, Green, Blue, Yellow, Orange, Purple
+                    const char colors[] = {'R', 'G', 'B', 'Y', 'O', 'P'};
+                    srand(time(NULL));
+                    for (int i = 0; i < 4; i++)
+                        key[i] = colors[rand() % 6];
+                    key[4] = '\0';
+
+                    sprintf(status, "%s", "OK");
+                    Game new_game = {iPLID, "", 1, time(NULL), iTime};
+                    strncpy(new_game.key, key, sizeof(new_game.key));
+                    append_game(&games, new_game);
+                }
                 sprintf(buffer, "RSG %s\n", status);
         }
 
+        printf("message sent: %s\n", buffer);
+        // print_games(&games);
         /* Envia a mensagem recebida (atualmente presente no buffer) para o endereço `addr` de onde foram recebidos dados */
         n = sendto(fd, buffer, n, 0, (struct sockaddr *)&addr, addrlen);
         if (n == -1) {
@@ -193,6 +255,7 @@ int main(int argc, char *argv[]) {
         }
     }
 
+    free_game_array(&games);
     freeaddrinfo(res);
     close(fd);
 }
