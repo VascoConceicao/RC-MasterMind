@@ -328,6 +328,17 @@ void calculateBlackAndWhite(const char* secret, const char* guess, int* nB, int*
     *nW = white;
 }
 
+void add_debug_game(GameArray *array, int PLID, int time_, char C1, char C2, char C3, char C4) {
+    char key[5];
+    sprintf(key, "%c%c%c%c", C1, C2, C3, C4);
+    key[4] = '\0';
+
+    Game new_game = {PLID, "", 1, NULL, NULL, time(NULL), time_};
+    strncpy(new_game.key, key, sizeof(new_game.key));
+    init_game_tries(&new_game);
+    append_game(array, new_game);
+}
+
 void get_formatted_start_time(Game *game, char *formatted_time, size_t size) {
     struct tm *timeinfo;
     timeinfo = localtime(&game->start_time);
@@ -420,19 +431,16 @@ int main(int argc, char *argv[]) {
     por conexões externas ao programa.
     É associado o nosso endereço (`res->ai_addr`, definido na chamada à função `getaddrinfo()`).*/
     n_udp = bind(fd_udp, res_udp->ai_addr, res_udp->ai_addrlen);
-    if (n_udp == -1) {
+    if (n_udp == -1)
         exit(1);
-    }
     
     fd_tcp = socket(AF_INET, SOCK_STREAM, 0);
     if (fd_tcp == -1)
         exit(1);
 
     opt = 1;
-    if (setsockopt(fd_tcp, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt)) < 0) {
-        perror("setsockopt failed");
+    if (setsockopt(fd_tcp, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt)) < 0)
         exit(1);
-    }
 
     memset(&hints_tcp, 0, sizeof hints_tcp);
     hints_tcp.ai_family = AF_INET;
@@ -621,6 +629,30 @@ int main(int argc, char *argv[]) {
                 }
 
                 sprintf(buffer, "RQT %s\n", status);
+                break;
+            }
+            
+            case DBG: {
+                char max_playtime[max_size], C1[max_size], C2[max_size], C3[max_size], C4[max_size];
+                sscanf(args, "%s %s %s %s %s %s", PLID, max_playtime, C1, C2, C3, C4);
+                int iPLID = get_integer(PLID, 6), iTime = get_time(max_playtime), game_index = get_game_index(iPLID, &games_array);
+                char iC1 = get_color(C1), iC2 = get_color(C2), iC3 = get_color(C3), iC4 = get_color(C4);
+
+                if (iPLID == -1 || iTime == -1 || iC1 == '\0' || iC2 == '\0' || iC3 == '\0' || iC4 == '\0') {
+                    sprintf(status, "%s", "ERR");
+                } else if (game_index != -1) {
+                    if (has_x_seconds_passed(games_array.games[game_index].start_time, games_array.games[game_index].max_playtime)) {
+                        remove_game(&games_array, game_index);
+                        add_debug_game(&games_array, iPLID, iTime, iC1, iC2, iC3, iC4);
+                        sprintf(status, "%s", "OK");
+                    }
+                    else
+                        sprintf(status, "%s", "NOK");
+                } else {
+                    add_debug_game(&games_array, iPLID, iTime, iC1, iC2, iC3, iC4);
+                    sprintf(status, "%s", "OK");
+                }
+                sprintf(buffer, "RDB %s\n", status);
                 break;
             }
             
