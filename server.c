@@ -183,7 +183,6 @@ int get_game_index(int PLID, GameArray *array) {
     return -1;
 }
 
-
 void free_game_array(GameArray *array) {
     for (size_t i = 0; i < array->size; i++) {
         free_game_tries(&array->games[i]); // Free the memory for tries
@@ -302,13 +301,13 @@ int main(int argc, char *argv[]) {
             case SNG: {
                 char max_playtime[max_size];
                 sscanf(args, "%s %s", PLID, max_playtime);
-                int iPLID = get_integer(PLID, 6), iTime = get_time(max_playtime);
+                int iPLID = get_integer(PLID, 6), iTime = get_time(max_playtime), game_index = get_game_index(iPLID, &games_array);
 
                 if (iPLID == -1 || iTime == -1) {
                     sprintf(status, "%s", "ERR");
                 } else if (get_game_index(iPLID, &games_array) != -1) {
-                    if (has_x_seconds_passed(games_array.games[get_game_index(iPLID, &games_array)].start_time, games_array.games[get_game_index(iPLID, &games_array)].max_playtime)) {
-                        remove_game(&games_array, get_game_index(iPLID, &games_array));
+                    if (has_x_seconds_passed(games_array.games[game_index].start_time, games_array.games[game_index].max_playtime)) {
+                        remove_game(&games_array, game_index);
                         add_game(&games_array, iPLID, iTime);
                         sprintf(status, "%s", "OK");
                     }
@@ -325,21 +324,23 @@ int main(int argc, char *argv[]) {
             case TRY: {
                 char C1[max_size], C2[max_size], C3[max_size], C4[max_size], nT[max_size];
                 sscanf(args, "%s %s %s %s %s %s", PLID, C1, C2, C3, C4, nT);
-                int iPLID = get_integer(PLID, 6), inT = get_integer(nT, 1);
+                int iPLID = get_integer(PLID, 6), inT = get_integer(nT, 1), game_index = get_game_index(iPLID, &games_array);
                 char iC1 = get_color(C1), iC2 = get_color(C2), iC3 = get_color(C3), iC4 = get_color(C4);
                 printf("Try: %d, %d, %c, %c, %c, %c\n", iPLID, inT, iC1, iC2, iC3, iC4);
                 if (iPLID == -1 || inT == -1 || iC1 == '\0' || iC2 == '\0' || iC3 == '\0' || iC4 == '\0') {
                     sprintf(status, "%s", "ERR");
-                } else if (has_x_seconds_passed(games_array.games[get_game_index(iPLID, &games_array)].start_time, games_array.games[get_game_index(iPLID, &games_array)].max_playtime)) {
+                } else if (has_x_seconds_passed(games_array.games[game_index].start_time, games_array.games[game_index].max_playtime)) {
+                    remove_game(&games_array, game_index);
                     sprintf(status, "%s", "ETM");
                 }
+                // A PARTIR DAQUI NAO ESTA FEITO
                 sprintf(buffer, "RTR %s\n", status);
                 break;
             }
         }
 
         printf("message sent: %s\n", buffer);
-        // print_games(&games_array);
+        print_games(&games_array);
         /* Envia a mensagem recebida (atualmente presente no buffer) para o endereço `addr` de onde foram recebidos dados */
         n = sendto(fd, buffer, strlen(buffer), 0, (struct sockaddr *)&addr, addrlen);
         if (n == -1) {
