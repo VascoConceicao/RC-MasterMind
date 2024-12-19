@@ -1,8 +1,8 @@
 
-     Active game found for player 106481
-Game initiated: 2024-12-18 18:32:07 with 300 seconds to be completed
+     Last finalized game for player 106481
+Game initiated: 2024-12-19 18:37:56 with 3s to be completed
+Mode: PLAY  Secret code: POOB
 
      Game started - no transactions found
-
-  -- 297 seconds remaining to be completed -- 
+     Termination: TIMEOUT at 2024-12-19 18:37:59, Duration: 3s
 

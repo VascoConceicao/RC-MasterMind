@@ -180,7 +180,7 @@ int main(int argc, char *argv[]) {
 
                 char *response = NULL;
                 size_t total_size = 0;
-
+                
                 while ((n_tcp = read(fd_tcp, buffer, 4)) > 0) {
                     char *temp = realloc(response, total_size + n_tcp + 1);
                     if (!temp) {
