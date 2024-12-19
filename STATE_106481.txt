@@ -1,8 +1,11 @@
-
+211
      Last finalized game for player 106481
-Game initiated: 2024-12-19 18:37:56 with 3s to be completed
-Mode: PLAY  Secret code: POOB
+Game initiated: 2024-12-19 23:06:43 with 300s to be completed
+Mode: PLAY Secret code: ORGR
 
-     Game started - no transactions found
-     Termination: TIMEOUT at 2024-12-19 18:37:59, Duration: 3s
+     --- Transactions found: 1 ---
+
+Trial: R R R R at 4s
+
+Termination: QUIT
 

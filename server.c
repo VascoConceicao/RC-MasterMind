@@ -16,6 +16,7 @@
 #define DBG 3
 #define STR 4
 #define SSB 5
+#define ERR 6
 
 int fd_udp, fd_tcp, newfd_tcp, errcode, max_fd, max_size = 512;
 ssize_t n_udp, n_tcp;
@@ -81,6 +82,8 @@ typedef struct {
     int *tries_time; // List of timestamps for each try
     time_t start_time;
     int max_playtime;
+    int mode; // New field to represent the game mode
+    int ended; // New field to represent whether the game has ended
 } Game;
 
 typedef struct {
@@ -155,7 +158,18 @@ void add_game(GameArray *array, int PLID, int time_) {
         key[i] = colors[rand() % 6];
     key[4] = '\0';
 
-    Game new_game = {PLID, "", 1, NULL, NULL, time(NULL), time_};
+    Game new_game = {PLID, "", 1, NULL, NULL, time(NULL), time_, 0, -1};
+    strncpy(new_game.key, key, sizeof(new_game.key));
+    init_game_tries(&new_game);
+    append_game(array, new_game);
+}
+
+void add_debug_game(GameArray *array, int PLID, int time_, char C1, char C2, char C3, char C4) {
+    char key[5];
+    sprintf(key, "%c%c%c%c", C1, C2, C3, C4);
+    key[4] = '\0';
+
+    Game new_game = {PLID, "", 1, NULL, NULL, time(NULL), time_, 1, -1};
     strncpy(new_game.key, key, sizeof(new_game.key));
     init_game_tries(&new_game);
     append_game(array, new_game);
@@ -165,7 +179,7 @@ void remove_game(GameArray *array, size_t index) {
     if (index >= array->size)
         return;
 
-    free_game_tries(&array->games[index]); // Free the memory for tries
+    free_game_tries(&array->games[index]);
 
     for (size_t i = index; i < array->size - 1; i++)
         array->games[i] = array->games[i + 1];
@@ -189,7 +203,7 @@ int get_game_index(int PLID, GameArray *array) {
 
 void free_game_array(GameArray *array) {
     for (size_t i = 0; i < array->size; i++) {
-        free_game_tries(&array->games[i]); // Free the memory for tries
+        free_game_tries(&array->games[i]);
     }
     free(array->games);
     array->games = NULL;
@@ -202,10 +216,10 @@ void get_tries(const Game *game, char *buffer) {
         sprintf(buffer, " ");
         return;
     }
-    
+
     size_t current_length = 0;
     for (int i = 0; i < game->nT; i++) {
-        char try_entry[max_size];
+        char try_entry[100];
         sprintf(try_entry, "Trial: %c %c %c %c at %ds,", game->tries[i][0], game->tries[i][1], game->tries[i][2], game->tries[i][3], game->tries_time[i]);
         sprintf(buffer + current_length, "%s", try_entry);
         current_length += strlen(try_entry);
@@ -227,13 +241,16 @@ void print_games(const GameArray *array) {
         printf("  nT           = %d\n", array->games[i].nT);
         printf("  Start Time   = %s", ctime(&array->games[i].start_time));
         printf("  Max Playtime = %d seconds\n", array->games[i].max_playtime);
+        printf("  Mode         = %d\n", array->games[i].mode);
+        printf("  Ended        = %d\n", array->games[i].ended);
 
-        char tries[max_size];
+        char tries[500];
         get_tries(&array->games[i], tries);
         printf("  %s\n", tries);
         printf("\n");
     }
 }
+
 
 int is_correct_guess(GameArray *array, int PLID, char iC1, char iC2, char iC3, char iC4) {
     int game_index = get_game_index(PLID, array);
@@ -328,17 +345,6 @@ void calculateBlackAndWhite(const char* secret, const char* guess, int* nB, int*
     *nW = white;
 }
 
-void add_debug_game(GameArray *array, int PLID, int time_, char C1, char C2, char C3, char C4) {
-    char key[5];
-    sprintf(key, "%c%c%c%c", C1, C2, C3, C4);
-    key[4] = '\0';
-
-    Game new_game = {PLID, "", 1, NULL, NULL, time(NULL), time_};
-    strncpy(new_game.key, key, sizeof(new_game.key));
-    init_game_tries(&new_game);
-    append_game(array, new_game);
-}
-
 void get_formatted_start_time(Game *game, char *formatted_time, size_t size) {
     struct tm *timeinfo;
     timeinfo = localtime(&game->start_time);
@@ -362,12 +368,11 @@ int get_file(char *Fname, char *Fsize, char *Fdata, GameArray* array, int game_i
     Game game = array->games[game_index];
     
     sprintf(Fname, "STATE_%d.txt", game.PLID);
-    sprintf(Fsize, "SIZE TODO");
     get_formatted_start_time(&game, formatted_start_time, sizeof(formatted_start_time));
-    if (has_x_seconds_passed(game.start_time, game.max_playtime)) {
+    if (has_x_seconds_passed(game.start_time, game.max_playtime) || game.ended != -1) {
         sprintf(beggining, "Last finalized game for player");
-        sprintf(mode, "Mode: TODO Secret code: %s\n", game.key);
-        sprintf(ending, "Termination: TODO, Duration: TODO\n");
+        sprintf(mode, "Mode: %s Secret code: %s\n", game.mode ? "DEBUG": "PLAY", game.key);
+        sprintf(ending, "Termination: %s\n", game.ended == -1 ? "TIMEOUT" : "QUIT");
         finalized = 1;
     } else {
         sprintf(beggining, "Active game found for player");
@@ -384,7 +389,7 @@ int get_file(char *Fname, char *Fsize, char *Fdata, GameArray* array, int game_i
         sprintf(Fdata + strlen(Fdata), "     --- Transactions found: %d ---\n\n%s\n\n", game.nT, tries);
         
     sprintf(Fdata + strlen(Fdata), "%s", ending);
-    
+    sprintf(Fsize, "SIZE %ld", strlen(Fdata));
     return finalized;
 }
 
@@ -531,6 +536,8 @@ int main(int argc, char *argv[]) {
             command = STR;
         } else if (!strcmp(command_string, "SSB")) {
             command = SSB;
+        } else {
+            command = ERR;
         }
         
         switch (command) {
@@ -622,7 +629,8 @@ int main(int argc, char *argv[]) {
                 } else if (game_index != -1) {
                     char key[5];
                     sprintf(key, "%s", games_array.games[game_index].key);
-                    remove_game(&games_array, game_index);
+                    games_array.games[game_index].ended = 1;
+                    // check_scoreboard(games_array, iPLID);
                     sprintf(status, "OK %c %c %c %c", key[0], key[1], key[2], key[3]);
                 } else {
                     sprintf(status, "NOK");
@@ -679,6 +687,11 @@ int main(int argc, char *argv[]) {
                 write(1, "received: ", 10);
                 write(1, buffer, strlen(buffer));
 
+                break;
+            }
+
+            case ERR: {
+                sprintf(buffer, "ERR\n");
                 break;
             }
     
