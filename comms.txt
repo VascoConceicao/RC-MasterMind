@@ -5,3 +5,4 @@ quit
 show_trials
 st
 debug 106481 600 R G B Y
+start 106481 3

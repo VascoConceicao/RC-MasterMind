@@ -1,0 +1,19 @@
+gcc player.c -o player; gcc server.c -o server -Wall -Wextra
+./server
+./server -v
+./player
+./player -n tejo.tecnico.ulisboa.pt -p 58011
+
+void add_game(GameArray *array, int PLID, int time_) {
+    char key[5] = "0000";
+    // Red, Green, Blue, Yellow, Orange, Purple
+    const char colors[] = {'R', 'G', 'B', 'Y', 'O', 'P'};
+    srand(time(NULL));
+    for (int i = 0; i < 4; i++)
+        key[i] = colors[rand() % 6];
+    key[4] = '\0';
+
+    Game new_game = {PLID, "", 1, NULL, time(NULL), time_};
+    strncpy(new_game.key, key, sizeof(new_game.key));
+    append_game(array, new_game);
+}

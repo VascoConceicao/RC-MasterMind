@@ -31,13 +31,10 @@ int n_spaces(char *args) {
 }
 
 int main(int argc, char *argv[]) {
-
     char *GSIP = "localhost";
     char* GSport = "58080";
 
     int opt;
-    char *endptr;
-
     while ((opt = getopt(argc, argv, "n:p:")) != -1) {
         switch (opt) {
             case 'n':
@@ -173,7 +170,7 @@ int main(int argc, char *argv[]) {
                 if (n_tcp == -1)
                     exit(1);
 
-                ssize_t total_bytes_written = 0;
+                size_t total_bytes_written = 0;
                 while (total_bytes_written < strlen(buffer)) {
                     n_tcp=write(fd_tcp, buffer + total_bytes_written, strlen(buffer) - total_bytes_written);
                     if (n_tcp == -1)
@@ -200,7 +197,7 @@ int main(int argc, char *argv[]) {
                     free(response);
                     exit(1);
                 }
-
+                
                 write(1, "response: ", 10);
                 write(1, response, strlen(response));
 

@@ -23,8 +23,26 @@ socklen_t addrlen;
 struct addrinfo hints, *res;
 struct sockaddr_in addr;
 
-int get_PLID(const char *str) {
-    if (strlen(str) != 6)
+char get_color(const char *str) {
+    // Ensure the string is valid and contains exactly one character
+    if (!str || str[1] != '\0') {
+        return '\0'; // Return '\0' if the string is invalid or not size 1
+    }
+    
+    char c = str[0]; // Extract the single character
+    const char valid_chars[] = {'R', 'G', 'B', 'Y', 'O', 'P'};
+    int size = sizeof(valid_chars) / sizeof(valid_chars[0]);
+    
+    for (int i = 0; i < size; i++) {
+        if (c == valid_chars[i]) {
+            return c; // Return the character if it is found in the list
+        }
+    }
+    return '\0'; // Return '\0' if the character is not in the list
+}
+
+int get_integer(const char *str, size_t n) {
+    if (strlen(str) != n)
         return -1;
 
     for (int i = 0; str[i] != '\0'; i++)
@@ -59,6 +77,7 @@ typedef struct {
     int PLID;
     char key[5];
     int nT;
+    char **tries; // List of strings for tries
     time_t start_time;
     int max_playtime;
 } Game;
@@ -75,6 +94,42 @@ void init_game(GameArray *array) {
     array->capacity = 0;
 }
 
+void init_game_tries(Game *game) {
+    game->tries = NULL;
+    game->nT = 0;
+}
+
+void add_try(Game *game, const char *new_try) {
+    if (strlen(new_try) != 4) {
+        fprintf(stderr, "Try must be a string of 4 characters.\n");
+        return;
+    }
+
+    game->tries = realloc(game->tries, (game->nT + 1) * sizeof(char *));
+    if (game->tries == NULL) {
+        perror("Failed to allocate memory for tries");
+        exit(EXIT_FAILURE);
+    }
+
+    game->tries[game->nT] = malloc(5 * sizeof(char)); // Allocate space for the string
+    if (game->tries[game->nT] == NULL) {
+        perror("Failed to allocate memory for a try");
+        exit(EXIT_FAILURE);
+    }
+
+    strcpy(game->tries[game->nT], new_try);
+    game->nT++;
+}
+
+void free_game_tries(Game *game) {
+    for (int i = 0; i < game->nT; i++) {
+        free(game->tries[i]);
+    }
+    free(game->tries);
+    game->tries = NULL;
+    game->nT = 0;
+}
+
 void append_game(GameArray *array, Game new_game) {
     if (array->size == array->capacity) {
         array->capacity = (array->capacity == 0) ? 1 : array->capacity * 2;
@@ -87,9 +142,26 @@ void append_game(GameArray *array, Game new_game) {
     array->size++;
 }
 
+void add_game(GameArray *array, int PLID, int time_) {
+    char key[5] = "0000";
+    // Red, Green, Blue, Yellow, Orange, Purple
+    const char colors[] = {'R', 'G', 'B', 'Y', 'O', 'P'};
+    srand(time(NULL));
+    for (int i = 0; i < 4; i++)
+        key[i] = colors[rand() % 6];
+    key[4] = '\0';
+
+    Game new_game = {PLID, "", 1, NULL, time(NULL), time_};
+    strncpy(new_game.key, key, sizeof(new_game.key));
+    init_game_tries(&new_game);
+    append_game(array, new_game);
+}
+
 void remove_game(GameArray *array, size_t index) {
     if (index >= array->size)
         return;
+
+    free_game_tries(&array->games[index]); // Free the memory for tries
 
     for (size_t i = index; i < array->size - 1; i++)
         array->games[i] = array->games[i + 1];
@@ -104,14 +176,18 @@ void remove_game(GameArray *array, size_t index) {
     }
 }
 
-int get_game_index(int PLID, GameArray *games) {
-    for (int i = 0; i < games->size; i++)
-        if (games->games[i].PLID == PLID)
+int get_game_index(int PLID, GameArray *array) {
+    for (size_t i = 0; i < array->size; i++)
+        if (array->games[i].PLID == PLID)
             return i;
     return -1;
 }
 
+
 void free_game_array(GameArray *array) {
+    for (size_t i = 0; i < array->size; i++) {
+        free_game_tries(&array->games[i]); // Free the memory for tries
+    }
     free(array->games);
     array->games = NULL;
     array->size = 0;
@@ -131,17 +207,20 @@ void print_games(const GameArray *array) {
         printf("  Key          = %s\n", array->games[i].key);
         printf("  nT           = %d\n", array->games[i].nT);
         printf("  Start Time   = %s", ctime(&array->games[i].start_time));
-        printf("  Max Playtime = %d seconds\n\n", array->games[i].max_playtime);
+        printf("  Max Playtime = %d seconds\n", array->games[i].max_playtime);
+        printf("  Tries:\n");
+        for (int j = 0; j < array->games[i].nT; j++) {
+            printf("    Try %d: %s\n", j + 1, array->games[i].tries[j]);
+        }
+        printf("\n");
     }
 }
 
 int main(int argc, char *argv[]) {
-
     char* GSport = "58080";
     int verbose = 0;
 
     int opt;
-
     while ((opt = getopt(argc, argv, "p:v")) != -1) {
         switch (opt) {
             case 'p':
@@ -185,9 +264,9 @@ int main(int argc, char *argv[]) {
     }
 
     int max_size = 512;
-    char buffer[max_size], status[4];
-    GameArray games;
-    init_game(&games);
+    char buffer[max_size], PLID[max_size], status[4];
+    GameArray games_array;
+    init_game(&games_array);
 
     /* Loop para receber bytes e processá-los */
     while (1) {
@@ -220,42 +299,55 @@ int main(int argc, char *argv[]) {
         }
         
         switch (command) {
-            case SNG:
-                char PLID[max_size], max_playtime[max_size];
+            case SNG: {
+                char max_playtime[max_size];
                 sscanf(args, "%s %s", PLID, max_playtime);
-                int iPLID = get_PLID(PLID), iTime = get_time(max_playtime);
+                int iPLID = get_integer(PLID, 6), iTime = get_time(max_playtime);
 
                 if (iPLID == -1 || iTime == -1) {
                     sprintf(status, "%s", "ERR");
-                } else if (get_game_index(iPLID, &games) != -1) {
-                    sprintf(status, "%s", "NOK");
+                } else if (get_game_index(iPLID, &games_array) != -1) {
+                    if (has_x_seconds_passed(games_array.games[get_game_index(iPLID, &games_array)].start_time, games_array.games[get_game_index(iPLID, &games_array)].max_playtime)) {
+                        remove_game(&games_array, get_game_index(iPLID, &games_array));
+                        add_game(&games_array, iPLID, iTime);
+                        sprintf(status, "%s", "OK");
+                    }
+                    else
+                        sprintf(status, "%s", "NOK");
                 } else {
-                    char key[5] = "0000";
-                    // Red, Green, Blue, Yellow, Orange, Purple
-                    const char colors[] = {'R', 'G', 'B', 'Y', 'O', 'P'};
-                    srand(time(NULL));
-                    for (int i = 0; i < 4; i++)
-                        key[i] = colors[rand() % 6];
-                    key[4] = '\0';
-
+                    add_game(&games_array, iPLID, iTime);
                     sprintf(status, "%s", "OK");
-                    Game new_game = {iPLID, "", 1, time(NULL), iTime};
-                    strncpy(new_game.key, key, sizeof(new_game.key));
-                    append_game(&games, new_game);
                 }
                 sprintf(buffer, "RSG %s\n", status);
+                break;
+            }
+            
+            case TRY: {
+                char C1[max_size], C2[max_size], C3[max_size], C4[max_size], nT[max_size];
+                sscanf(args, "%s %s %s %s %s %s", PLID, C1, C2, C3, C4, nT);
+                int iPLID = get_integer(PLID, 6), inT = get_integer(nT, 1);
+                char iC1 = get_color(C1), iC2 = get_color(C2), iC3 = get_color(C3), iC4 = get_color(C4);
+                printf("Try: %d, %d, %c, %c, %c, %c\n", iPLID, inT, iC1, iC2, iC3, iC4);
+                if (iPLID == -1 || inT == -1 || iC1 == '\0' || iC2 == '\0' || iC3 == '\0' || iC4 == '\0') {
+                    sprintf(status, "%s", "ERR");
+                } else if (has_x_seconds_passed(games_array.games[get_game_index(iPLID, &games_array)].start_time, games_array.games[get_game_index(iPLID, &games_array)].max_playtime)) {
+                    sprintf(status, "%s", "ETM");
+                }
+                sprintf(buffer, "RTR %s\n", status);
+                break;
+            }
         }
 
         printf("message sent: %s\n", buffer);
-        // print_games(&games);
+        // print_games(&games_array);
         /* Envia a mensagem recebida (atualmente presente no buffer) para o endereço `addr` de onde foram recebidos dados */
-        n = sendto(fd, buffer, n, 0, (struct sockaddr *)&addr, addrlen);
+        n = sendto(fd, buffer, strlen(buffer), 0, (struct sockaddr *)&addr, addrlen);
         if (n == -1) {
             exit(1);
         }
     }
 
-    free_game_array(&games);
+    free_game_array(&games_array);
     freeaddrinfo(res);
     close(fd);
 }
