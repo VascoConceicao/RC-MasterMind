@@ -201,7 +201,7 @@ int main(int argc, char *argv[]) {
                     exit(1);
                 }
                 
-                write(1, "response: ", 10);
+                write(1, "Received: ", 10);
                 write(1, response, strlen(response));
 
                 char status[max_size], Fname[max_size], Fsize[max_size];

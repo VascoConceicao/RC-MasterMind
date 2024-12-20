@@ -329,7 +329,7 @@ void check_time(int PLID) {
                             &start_local_time.tm_hour, &start_local_time.tm_min, &start_local_time.tm_sec,
                             &start_time);
 
-        if (result == 10) {
+        if (result == 11) {
             if (has_x_seconds_passed(start_time, max_playtime)) {
                 // Call delete_game with the "L" result for loss
                 delete_game(PLID, "L", start_time + max_playtime);
@@ -420,6 +420,40 @@ void create_new_debug_game(int PLID, int max_playtime, char key[KEY_LENGTH + 1])
 
     // Close the file
     fclose(file);
+}
+
+int has_finished_games(int PLID) {
+    char dir_path[max_size];
+    struct stat statbuf;
+    DIR *dir;
+    struct dirent *entry;
+
+    // Construct the directory path
+    snprintf(dir_path, sizeof(dir_path), "GAMES/%d", PLID);
+
+    // Check if the directory exists
+    if (stat(dir_path, &statbuf) != 0 || !S_ISDIR(statbuf.st_mode)) {
+        return 0;
+    }
+
+    // Open the directory
+    dir = opendir(dir_path);
+    if (!dir) {
+        return 0;
+    }
+
+    // Iterate through directory entries
+    while ((entry = readdir(dir)) != NULL) {
+        // Skip "." and ".."
+        if (strcmp(entry->d_name, ".") != 0 && strcmp(entry->d_name, "..") != 0) {
+            closedir(dir);
+            return 1; // Found a file
+        }
+    }
+
+    // No files found
+    closedir(dir);
+    return 0;
 }
 
 int expected_trial_number(int PLID) {
@@ -551,6 +585,116 @@ int is_different_than_previous_try(int PLID, char try[KEY_LENGTH + 1]) {
     } else {
         return 1; // Different try
     }
+}
+
+void send_summary_active(int PLID, char Fdata[max_size]) {
+    char filepath[max_size];
+    FILE *file;
+    char line[max_size];
+    int line_num = 0, max_playtime;
+    time_t start_time;
+
+    // Build the filepath
+    snprintf(filepath, sizeof(filepath), "GAMES/GAME_%d.txt", PLID);
+
+    // Open the file
+    file = fopen(filepath, "r");
+    if (!file) {
+        perror("Error opening file");
+        return;
+    }
+
+    // Initialize Fdata
+    Fdata[0] = '\0';
+
+    // Read the file line by line
+    while (fgets(line, sizeof(line), file)) {
+        if (line_num == 0) {
+            // Parse the first line to extract the start time
+            struct tm start_tm = {0};
+            sscanf(line, "%*s %*s %*s %d %d-%d-%d %d:%d:%d",
+                   &max_playtime, &start_tm.tm_year, &start_tm.tm_mon, &start_tm.tm_mday,
+                   &start_tm.tm_hour, &start_tm.tm_min, &start_tm.tm_sec);
+            start_tm.tm_year -= 1900; // Adjust year
+            start_tm.tm_mon -= 1;    // Adjust month
+            start_time = mktime(&start_tm);
+        } else {
+            sprintf(Fdata + strlen(Fdata), "\n\t");
+            // Parse subsequent lines in the specified format
+            char T;
+            char key[5];
+            int B, W;
+            int seconds;
+            if (sscanf(line, "%c: %4s %d %d %d", &T, key, &B, &W, &seconds) == 5) {
+                // Format and append the modified line to Fdata
+                char formatted_line[100];
+                snprintf(formatted_line, sizeof(formatted_line), "%d - %c %c %c %c nB=%d, nW=%d",
+                         line_num, key[0], key[1], key[2], key[3], B, W);
+                strncat(Fdata, formatted_line, max_size - strlen(Fdata) - 1);
+            }
+        }
+        line_num++;
+    }
+    fclose(file);
+
+    // Calculate and append the time elapsed
+    time_t end_time = start_time + max_playtime;
+    time_t current_time = time(NULL);
+    long elapsed_seconds = end_time - current_time;
+    char time_summary[50];
+    snprintf(time_summary, sizeof(time_summary), " - %ld s to go!", elapsed_seconds);
+    strncat(Fdata, time_summary, max_size - strlen(Fdata) - 1);
+}
+
+void send_summary_ended(char PLID[max_size], char Fdata[max_size]) {
+    char filepath[max_size];
+    FILE *file;
+    char line[max_size];
+    int line_num = 0, max_playtime;
+    time_t start_time;
+
+    // Build the filepath
+    find_last_game(PLID, filepath);
+
+    // Open the file
+    file = fopen(filepath, "r");
+    if (!file) {
+        perror("Error opening file");
+        return;
+    }
+
+    Fdata[0] = '\0';
+
+    // Read the file line by line
+    while (fgets(line, sizeof(line), file)) {
+        if (line_num == 0) {
+            // Parse the first line to extract the start time
+            struct tm start_tm = {0};
+            sscanf(line, "%*s %*s %*s %d %d-%d-%d %d:%d:%d",
+                   &max_playtime, &start_tm.tm_year, &start_tm.tm_mon, &start_tm.tm_mday,
+                   &start_tm.tm_hour, &start_tm.tm_min, &start_tm.tm_sec);
+            start_tm.tm_year -= 1900; // Adjust year
+            start_tm.tm_mon -= 1;    // Adjust month
+            start_time = mktime(&start_tm);
+        } else {
+            // Parse subsequent lines in the specified format
+            char T;
+            char key[5];
+            int B, W;
+            int seconds;
+            if (sscanf(line, "%c: %4s %d %d %d", &T, key, &B, &W, &seconds) == 5) {
+                // Format and append the modified line to Fdata
+                sprintf(Fdata + strlen(Fdata), "\n\t");
+                char formatted_line[max_size];
+                sprintf(Fdata + strlen(Fdata), "%d - %c %c %c %c nB=%d, nW=%d",
+                         line_num, key[0], key[1], key[2], key[3], B, W);
+            }
+        }
+        line_num++;
+    }
+    fclose(file);
+
+    sprintf(Fdata + strlen(Fdata), " -  0s to go!");
 }
 
 void calculateBlackAndWhite(int PLID, char try[KEY_LENGTH + 1], int *nB, int *nW) {
@@ -687,12 +831,10 @@ void add_try(int PLID, char try[KEY_LENGTH + 1]) {
     // Write the new trial to the file in the specified format
     fprintf(file, "T: %4s %d %d %ld\n", try, nB, nW, elapsed_time);
 
-    printf("Devia ter escrito\n");
+    fclose(file);
 
     if (nB == 4)
         delete_game(PLID, "W", time(NULL));
-
-    fclose(file);
 }
 
 int main(int argc, char *argv[]) {
@@ -965,10 +1107,35 @@ int main(int argc, char *argv[]) {
             }
 
             case STR: {
-                if (has_ongoing_game(iPLID)) {
-                    check_time(iPLID);
-                    send_summary(iPLID);
-                    sprintf(status, "ACT");
+                sscanf(args, "%s", PLID);
+                int iPLID = get_integer(PLID, 6);
+
+                if (iPLID == -1) {
+                    sprintf(buffer, "RST ERR\n");
+                    break;
+                }
+
+                char Fname[max_size];
+                int had_ongoing_game = 0;
+                if (has_ongoing_game(iPLID))
+                    had_ongoing_game = 1;
+                check_time(iPLID);
+                char Fdata[max_size];
+                if (had_ongoing_game) {
+                    if (has_ongoing_game(iPLID)) {
+                        send_summary_active(iPLID, Fdata);
+                        sprintf(status, "ACT %s_game.txt %ld %s", PLID, strlen(Fdata), Fdata);
+                    } else {
+                        send_summary_ended(PLID, Fdata);
+                        sprintf(status, "FIN %s_game.txt %ld %s", PLID, strlen(Fdata), Fdata);
+                    }
+                } else {
+                    if (has_finished_games(iPLID)) {
+                        send_summary_ended(PLID, Fdata);
+                        sprintf(status, "FIN %s_game.txt %ld %s", PLID, strlen(Fdata), Fdata);
+                    } else {
+                        sprintf(status, "NOK");
+                    }
                 }
 
                 sprintf(buffer, "RST %s\n", status);

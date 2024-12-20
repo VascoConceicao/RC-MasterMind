@@ -710,7 +710,7 @@ int main(int argc, char *argv[]) {
                     char Fname[max_size], Fsize[max_size], Fdata[max_size];
                     int finalized = get_file_trials(Fname, Fsize, Fdata, &games_array, game_index);
                     if (finalized)
-                        sprintf(status, "FIN %s %s %s", Fname, Fsize, Fdata);
+                        sptry R R R Rrintf(status, "FIN %s %s %s", Fname, Fsize, Fdata);
                     else
                         sprintf(status, "ACT %s %s %s", Fname, Fsize, Fdata);
                 }
