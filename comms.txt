@@ -1,4 +1,4 @@
-start 106481 300
+start 106481 3
 try R R R R
 try R R Y R
 quit
@@ -8,5 +8,5 @@ debug 106481 600 R G B Y
 debug 106481 5 R R R R
 debug 106481 30 R R R R
 try R R R R
-start 106481 3
+start 106481 300
 sb

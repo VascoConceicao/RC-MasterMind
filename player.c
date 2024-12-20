@@ -87,12 +87,13 @@ int main(int argc, char *argv[]) {
         int mode = 0;
         if (!strcmp(command, "start") && n_spaces(args) == 1) {
             char max_playtime[max_size];
-            sscanf(args, "%s %s %[^\n]", temp_PLID, max_playtime, next);
-            sprintf(buffer, "%s %s %s\n", "SNG", temp_PLID, max_playtime);
+            sscanf(args, "%s %s", temp_PLID, max_playtime);
+            printf("temp_PLID: %s\n", temp_PLID);
+            sprintf(buffer, "SNG %s %s\n", temp_PLID, max_playtime);
         } else if (!strcmp(command, "try") && n_spaces(args) == 3) {
             char C1[max_size], C2[max_size], C3[max_size], C4[max_size];
-            sscanf(args, "%s %s %s %s %[^\n]", C1, C2, C3, C4, next);
-            sprintf(buffer, "%s %s %s %s %s %s %d\n", "TRY", PLID, C1, C2, C3, C4, nT);
+            sscanf(args, "%s %s %s %s", C1, C2, C3, C4);
+            sprintf(buffer, "TRY %s %s %s %s %s %d\n", PLID, C1, C2, C3, C4, nT);
         } else if (!strcmp(command, "show_trials") || !strcmp(command, "st")) {
             mode = 1;
             sprintf(next, "%s", args);
@@ -117,6 +118,8 @@ int main(int argc, char *argv[]) {
         }
         if (strcmp(next, ""))
             sprintf(buffer, "%s\n", "ERR");
+
+        printf("Sent: %s\n", buffer);
         
         switch (mode) {
             // Modo UDP
@@ -137,7 +140,7 @@ int main(int argc, char *argv[]) {
 
                 /* Imprime a mensagem "echo" e o conteúdo do buffer (ou seja, o que foi recebido
                 do servidor) para o STDOUT (fd_udp = 1) */
-                write(1, "response: ", 10);
+                write(1, "Received: ", 10);
                 write(1, buffer, n_udp);
 
                 if (!strncmp(buffer, "RSG OK", 6) || !strncmp(buffer, "RDB OK", 6)) {
