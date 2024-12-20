@@ -444,9 +444,8 @@ int main(int argc, char *argv[]) {
     }
 
     fd_udp = socket(AF_INET, SOCK_DGRAM, 0);
-    if (fd_udp == -1) {
+    if (fd_udp == -1)
         exit(1);
-    }
 
     memset(&hints_udp, 0, sizeof hints_udp);
     hints_udp.ai_family = AF_INET;
@@ -458,9 +457,8 @@ int main(int argc, char *argv[]) {
 
     /* Ao passar o endereço `NULL`, indicamos que somos nós o Host. */
     errcode = getaddrinfo(NULL, GSport, &hints_udp, &res_udp);
-    if (errcode != 0) {
+    if (errcode != 0)
         exit(1);
-    }
 
     /* Quando uma socket é criada, não tem um endereço associado.
     Esta função serve para associar um endereço à socket, de forma a ser acessível
