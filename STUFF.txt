@@ -7,5 +7,20 @@ gcc player.c -o player; gcc server.c -o server -Wall -Wextra
 ssh ist1106481@sigma.ist.utl.pt -l ist1106481
 hostname -i
 scp -r /Users/vasco/Desktop/sigma/ ist1106481@sigma.tecnico.ulisboa.pt:~/SigmaGS
-
 rm -rf SigmaGS
+
+echo 193.136.128.108 58080 1 | nc tejo.tecnico.ulisboa.pt 59000 > reports/report1.html;
+echo 193.136.128.108 58080 2 | nc tejo.tecnico.ulisboa.pt 59000 > reports/report2.html;
+echo 193.136.128.108 58080 3 | nc tejo.tecnico.ulisboa.pt 59000 > reports/report3.html;
+echo 193.136.128.108 58080 4 | nc tejo.tecnico.ulisboa.pt 59000 > reports/report4.html;
+echo 193.136.128.108 58080 5 | nc tejo.tecnico.ulisboa.pt 59000 > reports/report5.html;
+echo 193.136.128.108 58080 6 | nc tejo.tecnico.ulisboa.pt 59000 > reports/report6.html;
+echo 193.136.128.108 58080 7 | nc tejo.tecnico.ulisboa.pt 59000 > reports/report7.html;
+echo 193.136.128.108 58080 8 | nc tejo.tecnico.ulisboa.pt 59000 > reports/report8.html;
+echo 193.136.128.108 58080 9 | nc tejo.tecnico.ulisboa.pt 59000 > reports/report9.html;
+echo 193.136.128.108 58080 10 | nc tejo.tecnico.ulisboa.pt 59000 > reports/report10.html;
+echo 193.136.128.108 58080 11 | nc tejo.tecnico.ulisboa.pt 59000 > reports/report11.html;
+echo 193.136.128.108 58080 21 | nc tejo.tecnico.ulisboa.pt 59000 > reports/report21.html;
+echo 193.136.128.108 58080 22 | nc tejo.tecnico.ulisboa.pt 59000 > reports/report22.html;
+echo 193.136.128.108 58080 23 | nc tejo.tecnico.ulisboa.pt 59000 > reports/report23.html;
+echo 193.136.128.108 58080 24 | nc tejo.tecnico.ulisboa.pt 59000 > reports/report24.html
