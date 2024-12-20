@@ -70,7 +70,7 @@ int main(int argc, char *argv[]) {
     if (errcode != 0)
         exit(1);
 
-    int max_size = 512, nT = 1;
+    int max_size = 1024, nT = 1;
     char buffer[max_size], PLID[max_size], command[max_size], temp_PLID[max_size], args[max_size], next[max_size];
     PLID[0] = '\0';
 
@@ -140,9 +140,10 @@ int main(int argc, char *argv[]) {
                 write(1, "response: ", 10);
                 write(1, buffer, n_udp);
 
-                if (!strncmp(buffer, "RSG OK", 6) || !strncmp(buffer, "RDB OK", 6))
+                if (!strncmp(buffer, "RSG OK", 6) || !strncmp(buffer, "RDB OK", 6)) {
                     strcpy(PLID, temp_PLID);
-                else if (!strncmp(buffer, "RTR OK", 6))
+                    nT = 1;
+                } else if (!strncmp(buffer, "RTR OK", 6))
                     nT = (buffer[7] - '0') + 1;
                 break;
 
@@ -151,9 +152,8 @@ int main(int argc, char *argv[]) {
                 /* Cria um socket TCP (SOCK_STREAM) para IPv4 (AF_INET).
                 É devolvido um descritor de ficheiro (fd) para onde se deve comunicar. */
                 fd_tcp = socket(AF_INET, SOCK_STREAM, 0);
-                if (fd_tcp == -1) {
+                if (fd_tcp == -1)
                     exit(1);
-                }
 
                 /* Preenche a estrutura com 0s e depois atribui a informação já conhecida da ligação */
                 memset(&hints_tcp, 0, sizeof hints_tcp);

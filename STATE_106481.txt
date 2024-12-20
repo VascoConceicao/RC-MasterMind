@@ -1,11 +1,8 @@
-211
-     Last finalized game for player 106481
-Game initiated: 2024-12-19 23:06:43 with 300s to be completed
-Mode: PLAY Secret code: ORGR
 
-     --- Transactions found: 1 ---
+     Active game found for player 106481
+Game initiated: 2024-12-20 02:17:07 with 3s to be completed
+ 
+     Game started - no transactions found
 
-Trial: R R R R at 4s
-
-Termination: QUIT
+  -- 2 seconds remaining to be completed --
 

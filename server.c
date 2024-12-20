@@ -18,7 +18,7 @@
 #define SSB 5
 #define ERR 6
 
-int fd_udp, fd_tcp, newfd_tcp, errcode, max_fd, max_size = 512;
+int fd_udp, fd_tcp, newfd_tcp, errcode, max_fd, max_size = 1024;
 ssize_t n_udp, n_tcp;
 socklen_t addrlen;
 struct addrinfo hints_udp, hints_tcp, *res_udp, *res_tcp;
@@ -83,7 +83,7 @@ typedef struct {
     time_t start_time;
     int max_playtime;
     int mode; // New field to represent the game mode
-    int ended; // New field to represent whether the game has ended
+    int ended; // -1 TIMEOUT, 0 WIN, 1 QUIT
 } Game;
 
 typedef struct {
@@ -158,7 +158,7 @@ void add_game(GameArray *array, int PLID, int time_) {
         key[i] = colors[rand() % 6];
     key[4] = '\0';
 
-    Game new_game = {PLID, "", 1, NULL, NULL, time(NULL), time_, 0, -1};
+    Game new_game = {PLID, "", 0, NULL, NULL, time(NULL), time_, 0, -1};
     strncpy(new_game.key, key, sizeof(new_game.key));
     init_game_tries(&new_game);
     append_game(array, new_game);
@@ -169,7 +169,7 @@ void add_debug_game(GameArray *array, int PLID, int time_, char C1, char C2, cha
     sprintf(key, "%c%c%c%c", C1, C2, C3, C4);
     key[4] = '\0';
 
-    Game new_game = {PLID, "", 1, NULL, NULL, time(NULL), time_, 1, -1};
+    Game new_game = {PLID, "", 0, NULL, NULL, time(NULL), time_, 1, -1};
     strncpy(new_game.key, key, sizeof(new_game.key));
     init_game_tries(&new_game);
     append_game(array, new_game);
@@ -227,6 +227,17 @@ void get_tries(const Game *game, char *buffer) {
     buffer[strlen(buffer) - 1] = '\0';
 }
 
+int compare_games(const void *a, const void *b) {
+    Game *gameA = (Game *)a;
+    Game *gameB = (Game *)b;
+    return gameA->nT - gameB->nT;
+}
+
+void insert_game_scoreboard(GameArray *array, Game game) {
+    append_game(array, game);
+    qsort(array->games, array->size, sizeof(Game), compare_games);
+}
+
 void print_games(const GameArray *array) {
     if (array->size == 0) {
         printf("No games available.\n");
@@ -250,7 +261,6 @@ void print_games(const GameArray *array) {
         printf("\n");
     }
 }
-
 
 int is_correct_guess(GameArray *array, int PLID, char iC1, char iC2, char iC3, char iC4) {
     int game_index = get_game_index(PLID, array);
@@ -361,10 +371,10 @@ int get_time_left(Game *game) {
     return time_left > 0 ? time_left : 0;
 }
 
-int get_file(char *Fname, char *Fsize, char *Fdata, GameArray* array, int game_index) {
-
+int get_file_trials(char *Fname, char *Fsize, char *Fdata, GameArray* array, int game_index) {
+    Fdata[0] = '\0';
     int finalized = 0;
-    char beggining[max_size], ending[max_size], mode[max_size], formatted_start_time[20];
+    char beggining[max_size], ending[max_size], mode[max_size], formatted_start_time[20], ended[10];
     Game game = array->games[game_index];
     
     sprintf(Fname, "STATE_%d.txt", game.PLID);
@@ -372,25 +382,46 @@ int get_file(char *Fname, char *Fsize, char *Fdata, GameArray* array, int game_i
     if (has_x_seconds_passed(game.start_time, game.max_playtime) || game.ended != -1) {
         sprintf(beggining, "Last finalized game for player");
         sprintf(mode, "Mode: %s Secret code: %s\n", game.mode ? "DEBUG": "PLAY", game.key);
-        sprintf(ending, "Termination: %s\n", game.ended == -1 ? "TIMEOUT" : "QUIT");
+        
+        if (game.ended == -1)
+            sprintf(ended, "TIMEOUT");
+        else if (game.ended == 0)
+            sprintf(ended, "WIN");
+        else
+            sprintf(ended, "QUIT");
+        sprintf(ending, "     Termination: %s\n", ended);
         finalized = 1;
     } else {
         sprintf(beggining, "Active game found for player");
-        sprintf(mode, "\n");
+        sprintf(mode, " ");
         sprintf(ending, "  -- %d seconds remaining to be completed --\n", get_time_left(&game));
     }
 
-    sprintf(Fdata + strlen(Fdata), "     %s %d\nGame initiated: %s with %ds to be completed\n%s\n", beggining, game.PLID, formatted_start_time, game.max_playtime, mode);
+    sprintf(Fdata + strlen(Fdata), "\n     %s %d\nGame initiated: %s with %ds to be completed\n%s\n", beggining, game.PLID, formatted_start_time, game.max_playtime, mode);
     char tries[max_size];
     get_tries(&array->games[game_index], tries);
     if (!strcmp(tries, " "))
-        sprintf(Fdata + strlen(Fdata), "     Game started - no transactions found     ");
+        sprintf(Fdata + strlen(Fdata), "     Game started - no transactions found\n\n");
     else
-        sprintf(Fdata + strlen(Fdata), "     --- Transactions found: %d ---\n\n%s\n\n", game.nT, tries);
+        sprintf(Fdata + strlen(Fdata), "     --- Transactions found: %d ---\n%s\n", game.nT, tries);
         
     sprintf(Fdata + strlen(Fdata), "%s", ending);
-    sprintf(Fsize, "SIZE %ld", strlen(Fdata));
+    sprintf(Fsize, "%ld", strlen(Fdata));
     return finalized;
+}
+
+void get_file_scoreboard(char *Fname, char *Fsize, char *Fdata, GameArray* array) {
+    Fdata[0] = '\0';
+    srand(time(NULL));
+    sprintf(Fname, "TOPSCORES_%d.txt", rand() % 9999999);
+    sprintf(Fdata + strlen(Fdata), "\n-------------------------------- TOP 10 SCORES --------------------------------\n\n                 SCORE PLAYER     CODE    NO TRIALS   MODE\n\n");
+    Game game;
+    for (size_t i = 0; i < array->size; i++) {
+        game = array->games[i];
+        sprintf(Fdata + strlen(Fdata), "             %ld -  %.0f  %d     %s        %d       %s\n", i+1, 100-(12.244897959183673*(game.nT-1)), game.PLID, game.key, game.nT, game.mode ? "DEBUG": "PLAY");
+    }
+
+    sprintf(Fsize, "%ld", strlen(Fdata));
 }
 
 int main(int argc, char *argv[]) {
@@ -470,8 +501,9 @@ int main(int argc, char *argv[]) {
     max_fd = (fd_udp > fd_tcp) ? fd_udp : fd_tcp;
 
     char buffer[max_size], PLID[max_size], status[max_size];
-    GameArray games_array;
+    GameArray games_array, scoreboard;
     init_game(&games_array);
+    init_game(&scoreboard);
 
     /* Loop para receber bytes e processá-los */
     while (1) {
@@ -549,8 +581,8 @@ int main(int argc, char *argv[]) {
                 if (iPLID == -1 || iTime == -1) {
                     sprintf(status, "%s", "ERR");
                 } else if (game_index != -1) {
-                    if (has_x_seconds_passed(games_array.games[game_index].start_time, games_array.games[game_index].max_playtime)) {
-                        remove_game(&games_array, game_index);
+                    if (has_x_seconds_passed(games_array.games[game_index].start_time, games_array.games[game_index].max_playtime) || games_array.games[game_index].ended != -1) { 
+                        remove_game(&games_array, game_index);                                                                     // METI ISTO (ultimo argumento do if) se o jogo ja tiver acabado da para criar um novo
                         add_game(&games_array, iPLID, iTime);
                         sprintf(status, "%s", "OK");
                     }
@@ -572,12 +604,12 @@ int main(int argc, char *argv[]) {
 
                 if (iPLID == -1 || inT == -1 || iC1 == '\0' || iC2 == '\0' || iC3 == '\0' || iC4 == '\0') {
                     sprintf(status, "ERR");
-                } else if (game_index == -1) {
+                } else if (game_index == -1 || games_array.games[game_index].ended != -1) { // METI ISTO (segundo argumento do if) se o jogo ja tiver acabado (games_array.games[game_index].ended != -1) devolve NOK
                     sprintf(status, "NOK");
                 } else if (has_x_seconds_passed(games_array.games[game_index].start_time, games_array.games[game_index].max_playtime)) {
                     char key[5];
                     sprintf(key, "%s", games_array.games[game_index].key);
-                    remove_game(&games_array, game_index);
+                    // remove_game(&games_array, game_index); TIREI ISTO!!!!!!!! nao remover o jogo pq se der st da merda, pq o jogo n esta la
                     sprintf(status, "ETM %c %c %c %c", key[0], key[1], key[2], key[3]);
                 } else if (delta_expected_trial_number(&games_array, iPLID, inT) == -1) {
                     if (is_different_than_previous_try(&games_array, iPLID, iC1, iC2, iC3, iC4)) {
@@ -589,6 +621,10 @@ int main(int argc, char *argv[]) {
                         sprintf(try, "%c%c%c%c", iC1, iC2, iC3, iC4);
                         int nB = 0, nW = 0;
                         calculateBlackAndWhite(key, try, &nB, &nW);
+                        if (nB == 4) { // METI ISTO se acertar ended = 0 (o representa WIN), adiciona ao scoreboard se der
+                            games_array.games[game_index].ended = 0;
+                            insert_game_scoreboard(&scoreboard, games_array.games[game_index]);
+                        }
                         sprintf(status, "OK %d %d %d", games_array.games[game_index].nT, nB, nW);
                     }
                 } else if (delta_expected_trial_number(&games_array, iPLID, inT) == 0) {
@@ -607,9 +643,13 @@ int main(int argc, char *argv[]) {
                             sprintf(try, "%c%c%c%c", iC1, iC2, iC3, iC4);
                             int nB = 0, nW = 0;
                             calculateBlackAndWhite(key, try, &nB, &nW);
-                            time_t current_time = time(NULL); // Get the current time
+                            time_t current_time = time(NULL);
                             int time_elapsed = (int)(current_time - games_array.games[game_index].start_time); // Calculate the elapsed time
                             add_try(&games_array.games[game_index], try, time_elapsed);
+                            if (nB == 4) {  // METI ISTO se acertar ended = 0 (o representa WIN), adiciona ao scoreboard se der
+                                games_array.games[game_index].ended = 0;
+                                insert_game_scoreboard(&scoreboard, games_array.games[game_index]);
+                            }
                             sprintf(status, "OK %d %d %d", games_array.games[game_index].nT, nB, nW);
                         }
                     }
@@ -626,11 +666,10 @@ int main(int argc, char *argv[]) {
 
                 if (iPLID == -1) {
                     sprintf(status, "ERR");
-                } else if (game_index != -1) {
+                } else if (game_index != -1 && games_array.games[game_index].ended == -1) { // METI ISTO (segundo argumento do if) se eu der quit mas o jogo ainda nao tiver acabado (games_array.games[game_index].ended == -1) pode dar quit
                     char key[5];
                     sprintf(key, "%s", games_array.games[game_index].key);
                     games_array.games[game_index].ended = 1;
-                    // check_scoreboard(games_array, iPLID);
                     sprintf(status, "OK %c %c %c %c", key[0], key[1], key[2], key[3]);
                 } else {
                     sprintf(status, "NOK");
@@ -649,8 +688,8 @@ int main(int argc, char *argv[]) {
                 if (iPLID == -1 || iTime == -1 || iC1 == '\0' || iC2 == '\0' || iC3 == '\0' || iC4 == '\0') {
                     sprintf(status, "%s", "ERR");
                 } else if (game_index != -1) {
-                    if (has_x_seconds_passed(games_array.games[game_index].start_time, games_array.games[game_index].max_playtime)) {
-                        remove_game(&games_array, game_index);
+                    if (has_x_seconds_passed(games_array.games[game_index].start_time, games_array.games[game_index].max_playtime) || games_array.games[game_index].ended != -1) {
+                        remove_game(&games_array, game_index);                                                                     // METI ISTO (ultimo argumento do if) se o jogo ja tiver acabado da para criar um novo
                         add_debug_game(&games_array, iPLID, iTime, iC1, iC2, iC3, iC4);
                         sprintf(status, "%s", "OK");
                     }
@@ -671,11 +710,11 @@ int main(int argc, char *argv[]) {
                     sprintf(status, "%s", "NOK");
                 } else {
                     char Fname[max_size], Fsize[max_size], Fdata[max_size];
-                    int finalized = get_file(Fname, Fsize, Fdata, &games_array, game_index);
+                    int finalized = get_file_trials(Fname, Fsize, Fdata, &games_array, game_index);
                     if (finalized)
-                        sprintf(status, "FIN %s %s\n%s", Fname, Fsize, Fdata);
+                        sprintf(status, "FIN %s %s %s", Fname, Fsize, Fdata);
                     else
-                        sprintf(status, "ACT %s %s\n%s", Fname, Fsize, Fdata);
+                        sprintf(status, "ACT %s %s %s", Fname, Fsize, Fdata);
                 }
 
                 sprintf(buffer, "RST %s\n", status);
@@ -683,10 +722,15 @@ int main(int argc, char *argv[]) {
             }
 
             case SSB: {
-                /* Faz `echo` da mensagem recebida para o STDOUT do servidor */
-                write(1, "received: ", 10);
-                write(1, buffer, strlen(buffer));
-
+                if (!scoreboard.size)
+                    sprintf(status, "%s", "EMPTY");
+                else {
+                    char Fname[max_size], Fsize[max_size], Fdata[max_size];
+                    get_file_scoreboard(Fname, Fsize, Fdata, &scoreboard);
+                    sprintf(status, "OK %s %s %s", Fname, Fsize, Fdata);
+                }
+                
+                sprintf(buffer, "RSS %s\n", status);
                 break;
             }
 
@@ -697,8 +741,10 @@ int main(int argc, char *argv[]) {
     
         }
 
-        // printf("message sent: %s\n", buffer);
-        // print_games(&games_array);
+        // if (verbose) {
+        //     // printf("message sent: %s\n", buffer);
+        //     print_games(&games_array);
+        // }
         /* Envia a mensagem recebida (atualmente presente no buffer) para o endereço `addr` de onde foram recebidos dados */
         if (!udp_or_tcp){
             n_udp = sendto(fd_udp, buffer, strlen(buffer), 0, (struct sockaddr *)&addr, addrlen);
